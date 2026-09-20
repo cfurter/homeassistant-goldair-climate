@@ -9,6 +9,7 @@ from homeassistant.components.climate.const import (
     SWING_HORIZONTAL,
     SWING_OFF,
 )
+from homeassistant.const import ATTR_TEMPERATURE
 
 ATTR_TARGET_TEMPERATURE = "target_temperature"
 ATTR_DISPLAY_ON = "display_on"
@@ -21,6 +22,7 @@ PROPERTY_TO_DPS_ID = {
     ATTR_PRESET_MODE: "3",
     ATTR_SWING_MODE: "8",
     ATTR_DISPLAY_ON: "101",
+    ATTR_TEMPERATURE: "11",
 }
 
 HVAC_MODE_TO_DPS_MODE = {HVACMode.OFF: False, HVACMode.FAN_ONLY: True}

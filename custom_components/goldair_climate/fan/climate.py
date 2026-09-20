@@ -13,6 +13,7 @@ from homeassistant.components.climate.const import (
     ATTR_PRESET_MODE,
     ATTR_SWING_MODE,
 )
+from homeassistant.const import ATTR_TEMPERATURE
 
 from ..device import GoldairTuyaDevice
 from .const import (
@@ -76,8 +77,13 @@ class GoldairFan(ClimateEntity):
 
     @property
     def temperature_unit(self):
-        """This is not used but required by Home Assistant."""
+        """Return the unit of measurement."""
         return self._device.temperature_unit
+
+    @property
+    def current_temperature(self):
+        """Return the current temperature."""
+        return self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE])
 
     @property
     def available(self):

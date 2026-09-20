@@ -71,6 +71,10 @@ class TestGoldairFan(IsolatedAsyncioTestCase):
             self.subject.temperature_unit, self.subject._device.temperature_unit
         )
 
+    def test_current_temperature_returns_device_temperature(self):
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE]] = 23
+        self.assertEqual(self.subject.current_temperature, 23)
+
     def test_hvac_mode(self):
         self.dps[PROPERTY_TO_DPS_ID[ATTR_HVAC_MODE]] = True
         self.assertEqual(self.subject.hvac_mode, HVACMode.FAN_ONLY)
