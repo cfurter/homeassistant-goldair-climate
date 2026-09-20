@@ -52,3 +52,12 @@ DEHUMIDIFIER_PAYLOAD = {
 }
 
 FAN_PAYLOAD = {"1": False, "2": "12", "3": "normal", "8": True, "11": "0", "101": False}
+
+FAN_WITH_TIMER_PAYLOAD = {
+    "1": False,
+    "2": "1",
+    "3": "1",
+    "4": "off",
+    "6": "0",
+    "19": 21,
+}

@@ -71,6 +71,19 @@ class TestGoldairFan(IsolatedAsyncioTestCase):
             self.subject.temperature_unit, self.subject._device.temperature_unit
         )
 
+    def test_current_temperature_returns_device_temperature(self):
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE]] = "23"
+        self.assertEqual(self.subject.current_temperature, 23.0)
+
+    def test_current_temperature_falls_back_to_dps_19(self):
+        del self.dps[PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE]]
+        self.dps["19"] = 22
+        self.assertEqual(self.subject.current_temperature, 22)
+
+    def test_current_temperature_returns_none_for_non_numeric_value(self):
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE]] = "off"
+        self.assertIsNone(self.subject.current_temperature)
+
     def test_hvac_mode(self):
         self.dps[PROPERTY_TO_DPS_ID[ATTR_HVAC_MODE]] = True
         self.assertEqual(self.subject.hvac_mode, HVACMode.FAN_ONLY)
@@ -237,6 +250,59 @@ class TestGoldairFan(IsolatedAsyncioTestCase):
             {PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]: "6"},
         ):
             await self.subject.async_set_fan_mode(6)
+
+    def test_compact_fan_modes(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["19"] = 22
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]] = "2"
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]] = "1"
+
+        self.assertEqual(self.subject.fan_modes, ["1", "2", "3"])
+        self.assertEqual(self.subject.fan_mode, "1")
+
+    def test_compact_preset_modes(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["19"] = 22
+        self.dps[PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]] = "4"
+
+        self.assertEqual(
+            self.subject.preset_modes,
+            [PRESET_NORMAL, "nature", PRESET_SLEEP, "child"],
+        )
+        self.assertEqual(self.subject.preset_mode, "child")
+
+    async def test_set_compact_fan_mode(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["19"] = 22
+
+        async with assert_device_properties_set(
+            self.subject._device,
+            {PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]: "3"},
+        ):
+            await self.subject.async_set_fan_mode(3)
+
+    def test_compact_swing_and_timer(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["4"] = "on"
+        self.dps["6"] = "3"
+        self.dps["19"] = 22
+
+        self.assertEqual(self.subject.swing_mode, SWING_HORIZONTAL)
+        self.assertEqual(self.subject.extra_state_attributes, {"timer": "3"})
+
+    async def test_set_compact_swing_mode(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["19"] = 22
+
+        async with assert_device_properties_set(self.subject._device, {"4": "off"}):
+            await self.subject.async_set_swing_mode(SWING_OFF)
+
+    async def test_set_compact_swing_mode_on(self):
+        self.dps.pop(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        self.dps["19"] = 22
+
+        async with assert_device_properties_set(self.subject._device, {"4": "on"}):
+            await self.subject.async_set_swing_mode(SWING_HORIZONTAL)
 
     def test_fan_mode_for_eco_preset(self):
         self.dps[PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]] = PRESET_MODE_TO_DPS_MODE[

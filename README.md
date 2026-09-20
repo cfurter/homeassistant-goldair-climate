@@ -19,6 +19,7 @@ The `goldair_climate` component integrates [Goldair WiFi-enabled heaters](http:/
 Current temperature is also displayed.
 
 **GPCV Heaters**
+
 - **power** (on/off)
 - **mode** (Low, High)
 - **target temperature** (`15`-`35` in °C)
@@ -26,6 +27,7 @@ Current temperature is also displayed.
 Current temperature is also displayed.
 
 **GECO Heaters**
+
 - **power** (on/off)
 - **target temperature** (`15`-`35` in °C)
 
@@ -39,7 +41,7 @@ Current temperature is also displayed.
 
 Current temperature is displayed, and current humidity is available as a property. The "tank full" state is available via the **error** attribute, and if you want to you can easily surface this to a top-level entity using a [template sensor](https://www.home-assistant.io/integrations/template/).
 
-**Fans**
+**GPTF370 Fans**
 
 - **power** (on/off)
 - **mode** (Normal, Eco, Sleep)
@@ -60,7 +62,7 @@ There was previously a sensor option, however this is easily achieved using a [t
 
 ### Device support
 
-Please note, this component is actively tested with the Goldair GPPH (inverter), GPDH420 (dehumidifier), GCPF315 fan, and GCT315 ceramic tower heater, and community-tested with GECO,and GPCV heater devices. It may work with the GPDH440 dehumidifier, GEPH heater, and other heaters, dehumidifiers or fans based on the Tuya platform.
+Please note, this component is actively tested with the Goldair GPPH (inverter), GPDH420 (dehumidifier), GCPF315 fan, and GCT315 ceramic tower heater, and community-tested with GECO,and GPCV heater devices. It may work with the GPDH440 dehumidifier, GEPH heater, and other heaters, dehumidifiers or GPTF370 fans based on the Tuya platform.
 
 GPCV support is based on feedback from etamtlosz on Issue #27. GECO support is based on work in KiLLeRRaT/homeassistant-goldair-climate and the feature set from the online manual for these heaters. GEPH heaters appear to be the same as the GECO270, so may also work with this setting. This heater is almost compatible with the GPCV but without the Low/High mode.
 

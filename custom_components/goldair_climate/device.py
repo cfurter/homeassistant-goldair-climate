@@ -37,6 +37,8 @@ class GoldairTuyaDevice(object):
         import tinytuya
 
         self._name = name
+        self._device_id = dev_id
+        self._address = address
         self._api_protocol_version_index = None
         self._api_protocol_working = False
         self._api = tinytuya.Device(dev_id, address, local_key)
@@ -89,8 +91,10 @@ class GoldairTuyaDevice(object):
         _LOGGER.debug(f"Inferring device type from cached state: {cached_state}")
         if "5" in cached_state and "3" not in cached_state:
             return CONF_TYPE_DEHUMIDIFIER
-        # Must precede the fan check: the GCT315 also reports "8" (oscillation).
-        # "19" (its auto-off countdown) is the only dps unique to this layout.
+        # The GCT315 reports both "8" (oscillation) and "19" (auto-off). Some
+        # fan models report "19" but do not expose the oscillation DPS.
+        if "19" in cached_state and "8" not in cached_state:
+            return CONF_TYPE_FAN
         if "19" in cached_state:
             return CONF_TYPE_GCT315_HEATER
         if "8" in cached_state:
@@ -113,10 +117,16 @@ class GoldairTuyaDevice(object):
         await self._refresh_task
 
     def refresh(self):
-        _LOGGER.debug(f"Refreshing device state for {self.name}.")
+        _LOGGER.debug(
+            "Refreshing device state for %s (device_id=%s, ip=%s).",
+            self.name,
+            self._device_id,
+            self._address,
+        )
         self._retry_on_failed_connection(
             lambda: self._refresh_cached_state(),
-            f"Failed to refresh device state for {self.name}.",
+            f"Failed to refresh device state for {self.name} "
+            f"(device_id={self._device_id}, ip={self._address})",
         )
 
     def get_property(self, dps_id):
@@ -152,9 +162,20 @@ class GoldairTuyaDevice(object):
 
         self._cached_state = new_state["dps"]
         self._cached_state["updated_at"] = time()
-        _LOGGER.info(f"refreshed device state: {json.dumps(new_state)}")
+        _LOGGER.info(
+            "Refreshed device state for %s (device_id=%s, ip=%s): %s",
+            self.name,
+            self._device_id,
+            self._address,
+            json.dumps(new_state),
+        )
         _LOGGER.debug(
-            f"new cache state (including pending properties): {json.dumps(self._get_cached_state())}"
+            "New cache state for %s (device_id=%s, ip=%s, including pending "
+            "properties): %s",
+            self.name,
+            self._device_id,
+            self._address,
+            json.dumps(self._get_cached_state()),
         )
 
     def _set_properties(self, properties):
@@ -196,10 +217,12 @@ class GoldairTuyaDevice(object):
             self._lock.acquire()
             self._check_response(self._api.set_multiple_values(properties))
             self._cached_state["updated_at"] = 0
-            now = time()
             pending_updates = self._get_pending_updates()
-            for key, value in pending_updates.items():
-                pending_updates[key]["updated_at"] = now
+            for key, value in properties.items():
+                self._cached_state[key] = value
+                pending_update = pending_updates.get(key)
+                if pending_update is not None and pending_update["value"] == value:
+                    pending_updates.pop(key)
         finally:
             self._lock.release()
 
