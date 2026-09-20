@@ -20,6 +20,7 @@ from custom_components.goldair_climate.device import GoldairTuyaDevice
 from .const import (
     DEHUMIDIFIER_PAYLOAD,
     FAN_PAYLOAD,
+    FAN_WITH_TIMER_PAYLOAD,
     GCT315_HEATER_PAYLOAD,
     GECO_HEATER_PAYLOAD,
     GPCV_HEATER_PAYLOAD,
@@ -103,6 +104,10 @@ class TestDevice(IsolatedAsyncioTestCase):
 
     async def test_detects_fan_payload(self):
         self.subject._cached_state = FAN_PAYLOAD
+        self.assertEqual(await self.subject.async_inferred_type(), CONF_TYPE_FAN)
+
+    async def test_detects_fan_with_timer_payload(self):
+        self.subject._cached_state = FAN_WITH_TIMER_PAYLOAD
         self.assertEqual(await self.subject.async_inferred_type(), CONF_TYPE_FAN)
 
     async def test_detects_gct315_heater_payload(self):
@@ -338,6 +343,21 @@ class TestDevice(IsolatedAsyncioTestCase):
             self.subject._api.set_multiple_values.assert_called_once_with(
                 {"1": True, "2": False}
             )
+
+    def test_successful_property_updates_are_removed_from_pending_queue(self):
+        with patch("custom_components.goldair_climate.device.Timer"):
+            self.subject.set_property("1", True)
+            self.subject._send_pending_updates()
+
+            self.assertEqual(self.subject._pending_updates, {})
+            self.assertTrue(self.subject._cached_state["1"])
+
+            self.subject.set_property("4", "on")
+            self.subject._send_pending_updates()
+
+        self.subject._api.set_multiple_values.assert_has_calls(
+            [call({"1": True}), call({"4": "on"})]
+        )
 
     def test_set_properties_takes_no_action_when_no_properties_are_provided(self):
         with patch("custom_components.goldair_climate.device.Timer") as mock:

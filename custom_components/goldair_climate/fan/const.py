@@ -13,6 +13,7 @@ from homeassistant.const import ATTR_TEMPERATURE
 
 ATTR_TARGET_TEMPERATURE = "target_temperature"
 ATTR_DISPLAY_ON = "display_on"
+ATTR_TIMER = "timer"
 
 PRESET_NORMAL = "normal"
 
@@ -49,4 +50,22 @@ FAN_MODES = {
     },
     PRESET_ECO: {1: "4", 2: "8", 3: "12"},
     PRESET_SLEEP: {1: "4", 2: "8", 3: "12"},
+}
+
+COMPACT_FAN_MODES = {"1": "1", "2": "2", "3": "3"}
+
+COMPACT_PRESET_MODE_TO_DPS_MODE = {
+    "normal": "1",
+    "nature": "2",
+    "sleep": "3",
+    "child": "4",
+}
+
+COMPACT_SWING_MODE_TO_DPS_MODE = {SWING_OFF: "off", SWING_HORIZONTAL: "on"}
+COMPACT_PROPERTY_TO_DPS_ID = {
+    ATTR_FAN_MODE: "2",
+    ATTR_PRESET_MODE: "3",
+    ATTR_SWING_MODE: "4",
+    ATTR_TIMER: "6",
+    ATTR_TEMPERATURE: "19",
 }

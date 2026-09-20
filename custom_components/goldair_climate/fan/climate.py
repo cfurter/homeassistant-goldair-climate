@@ -17,6 +17,11 @@ from homeassistant.const import ATTR_TEMPERATURE
 
 from ..device import GoldairTuyaDevice
 from .const import (
+    ATTR_TIMER,
+    COMPACT_FAN_MODES,
+    COMPACT_PROPERTY_TO_DPS_ID,
+    COMPACT_PRESET_MODE_TO_DPS_MODE,
+    COMPACT_SWING_MODE_TO_DPS_MODE,
     FAN_MODES,
     HVAC_MODE_TO_DPS_MODE,
     PRESET_MODE_TO_DPS_MODE,
@@ -83,7 +88,15 @@ class GoldairFan(ClimateEntity):
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE])
+        temperature = self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_TEMPERATURE])
+        if temperature is None:
+            # This fan variant reports its temperature on DPS 19 instead of DPS 11.
+            temperature = self._device.get_property("19")
+
+        try:
+            return float(temperature) if temperature is not None else None
+        except (TypeError, ValueError):
+            return None
 
     @property
     def available(self):
@@ -123,10 +136,20 @@ class GoldairFan(ClimateEntity):
     @property
     def preset_mode(self):
         """Return current preset mode, ie Comfort, Eco, Anti-freeze."""
-        dps_mode = self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE])
+        preset_modes = (
+            COMPACT_PRESET_MODE_TO_DPS_MODE
+            if self._is_compact_fan
+            else PRESET_MODE_TO_DPS_MODE
+        )
+        preset_dps_id = (
+            PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]
+            if self._is_compact_fan
+            else PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]
+        )
+        dps_mode = self._device.get_property(preset_dps_id)
         if dps_mode is not None:
             return GoldairTuyaDevice.get_key_for_value(
-                PRESET_MODE_TO_DPS_MODE, dps_mode
+                preset_modes, dps_mode
             )
         else:
             return None
@@ -134,40 +157,92 @@ class GoldairFan(ClimateEntity):
     @property
     def preset_modes(self):
         """Return the list of available preset modes."""
+        if self._is_compact_fan:
+            return list(COMPACT_PRESET_MODE_TO_DPS_MODE.keys())
         return list(PRESET_MODE_TO_DPS_MODE.keys())
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new preset mode."""
-        dps_mode = PRESET_MODE_TO_DPS_MODE[preset_mode]
+        preset_modes = (
+            COMPACT_PRESET_MODE_TO_DPS_MODE
+            if self._is_compact_fan
+            else PRESET_MODE_TO_DPS_MODE
+        )
+        preset_dps_id = (
+            PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]
+            if self._is_compact_fan
+            else PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]
+        )
+        dps_mode = preset_modes[preset_mode]
         await self._device.async_set_property(
-            PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE], dps_mode
+            preset_dps_id, dps_mode
         )
 
     @property
     def swing_mode(self):
         """Return current swing mode: horizontal or off"""
-        dps_mode = self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE])
+        swing_modes = (
+            COMPACT_SWING_MODE_TO_DPS_MODE
+            if self._is_compact_fan
+            else SWING_MODE_TO_DPS_MODE
+        )
+        swing_dps_id = (
+            COMPACT_PROPERTY_TO_DPS_ID[ATTR_SWING_MODE]
+            if self._is_compact_fan
+            else PROPERTY_TO_DPS_ID[ATTR_SWING_MODE]
+        )
+        dps_mode = self._device.get_property(swing_dps_id)
         if dps_mode is not None:
-            return GoldairTuyaDevice.get_key_for_value(SWING_MODE_TO_DPS_MODE, dps_mode)
+            return GoldairTuyaDevice.get_key_for_value(swing_modes, dps_mode)
         else:
             return None
 
     @property
     def swing_modes(self):
         """Return the list of available swing modes."""
+        if self._is_compact_fan:
+            return list(COMPACT_SWING_MODE_TO_DPS_MODE.keys())
         return list(SWING_MODE_TO_DPS_MODE.keys())
 
     async def async_set_swing_mode(self, swing_mode):
         """Set new swing mode."""
-        dps_mode = SWING_MODE_TO_DPS_MODE[swing_mode]
-        await self._device.async_set_property(
-            PROPERTY_TO_DPS_ID[ATTR_SWING_MODE], dps_mode
+        swing_modes = (
+            COMPACT_SWING_MODE_TO_DPS_MODE
+            if self._is_compact_fan
+            else SWING_MODE_TO_DPS_MODE
         )
+        swing_dps_id = (
+            COMPACT_PROPERTY_TO_DPS_ID[ATTR_SWING_MODE]
+            if self._is_compact_fan
+            else PROPERTY_TO_DPS_ID[ATTR_SWING_MODE]
+        )
+        dps_mode = swing_modes[swing_mode]
+        await self._device.async_set_property(
+            swing_dps_id, dps_mode
+        )
+
+    @property
+    def extra_state_attributes(self):
+        """Return device values not represented by the climate entity."""
+        if self._is_compact_fan:
+            return {
+                ATTR_TIMER: self._device.get_property(
+                    COMPACT_PROPERTY_TO_DPS_ID[ATTR_TIMER]
+                )
+            }
+        return {}
 
     @property
     def fan_mode(self):
         """Return current fan mode: 1-12 or 1-3 depending on the preset"""
-        dps_mode = self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_FAN_MODE])
+        fan_dps_id = (
+            PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE]
+            if self._is_compact_fan
+            else PROPERTY_TO_DPS_ID[ATTR_FAN_MODE]
+        )
+        dps_mode = self._device.get_property(fan_dps_id)
+        if self._is_compact_fan and dps_mode in COMPACT_FAN_MODES.values():
+            return GoldairTuyaDevice.get_key_for_value(COMPACT_FAN_MODES, dps_mode)
         if (
             dps_mode is not None
             and self.preset_mode is not None
@@ -182,6 +257,8 @@ class GoldairFan(ClimateEntity):
     @property
     def fan_modes(self):
         """Return the list of available fan modes."""
+        if self._is_compact_fan:
+            return list(COMPACT_FAN_MODES.values())
         if self.preset_mode is not None:
             return list(FAN_MODES[self.preset_mode].keys())
         else:
@@ -189,13 +266,25 @@ class GoldairFan(ClimateEntity):
 
     async def async_set_fan_mode(self, fan_mode):
         """Set new fan mode."""
-        if self.preset_mode is not None:
+        if self._is_compact_fan:
+            dps_mode = COMPACT_FAN_MODES[str(fan_mode)]
+            await self._device.async_set_property(
+                PROPERTY_TO_DPS_ID[ATTR_PRESET_MODE], dps_mode
+            )
+        elif self.preset_mode is not None:
             dps_mode = FAN_MODES[self.preset_mode][int(fan_mode)]
             await self._device.async_set_property(
                 PROPERTY_TO_DPS_ID[ATTR_FAN_MODE], dps_mode
             )
         else:
             raise ValueError("Fan mode can only be set when a preset mode is set")
+
+    @property
+    def _is_compact_fan(self):
+        return (
+            self._device.get_property("19") is not None
+            and self._device.get_property(PROPERTY_TO_DPS_ID[ATTR_SWING_MODE]) is None
+        )
 
     async def async_update(self):
         await self._device.async_refresh()

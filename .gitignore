@@ -5,6 +5,7 @@ __pycache__/
 *.zip
 /.coverage
 /coverage.xml
+.venv/
 
 # tinytuya wizard output. These hold local keys and Tuya cloud API credentials.
 /devices.json
